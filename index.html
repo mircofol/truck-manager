@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truck Manager Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #2563eb;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+       
+        // Icone Lucide caricate globalmente
+        const Icon = ({ name, size = 20, className = "" }) => {
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        const App = () => {
+            // --- CONFIGURAZIONE GOOGLE ---
+            // INCOLLA QUI IL TUO URL GOOGLE SCRIPT (/exec)
+            const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFh2_q4Ud_dVDwM1S16a5HwnGF51JSCCg_gP87BPcsPdyJr5os7o5axUNfEP7xszBBIw/exec";
+
+            const [tab, setTab] = useState('viaggio');
+            const [autista, setAutista] = useState('');
+            const [targa, setTarga] = useState('');
+            const [inInvio, setInInvio] = useState(false);
+            const [kmInizio, setKmInizio] = useState('');
+            const [kmFine, setKmFine] = useState('');
+            const [nDistinta, setNDistinta] = useState('');
+            const [listaDistinte, setListaDistinte] = useState([]);
+            const [litri, setLitri] = useState('');
+            const [euro, setEuro] = useState('');
+            const [kmAlPieno, setKmAlPieno] = useState('');
+            const [tipoFerie, setTipoFerie] = useState('Ferie');
+            const [dataSelezionata, setDataSelezionata] = useState(new Date());
+            const [checklist, setChecklist] = useState({
+                olio: 80, freni: 70, idroguida: 90, liquidoRaffreddamento: 100, gomme: 60
+            });
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [tab, inInvio]);
+
+            const inviaAGoogle = async (payload) => {
+                if (!GOOGLE_SCRIPT_URL) {
+                    alert("Configura l'URL di Google Script nel codice!");
+                    return false;
+                }
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: "POST",
+                        mode: "no-cors",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    return true;
+                } catch (e) {
+                    console.error(e);
+                    return false;
+                }
+            };
+
+            const handleAction = async (tipoAzione, dettaglio = "") => {
+                if (!autista || !targa) {
+                    alert("👤 Inserire Autista e Targa");
+                    return;
+                }
+                setInInvio(true);
+                let payload = { autista, targa, azione: tipoAzione };
+
+                if (tipoAzione === "VIAGGIO") {
+                    payload.tipo = dettaglio;
+                    payload.km = dettaglio === "INIZIO" ? kmInizio : kmFine;
+                    payload.distinte = listaDistinte.map(d => d.n).join(", ");
+                } else if (tipoAzione === "CHECK") {
+                    payload.olio = checklist.olio;
+                    payload.freni = checklist.freni;
+                    payload.idroguida = checklist.idroguida;
+                    payload.raffreddamento = checklist.liquidoRaffreddamento;
+                    payload.gomme = checklist.gomme;
+                } else if (tipoAzione === "FERIE") {
+                    payload.tipoAssenza = tipoFerie;
+                    payload.dataSelezionata = dataSelezionata.toLocaleDateString('it-IT');
+                } else if (tipoAzione === "PIENO") {
+                    payload.litri = litri; payload.euro = euro; payload.kmPieno = kmAlPieno;
+                }
+
+                await inviaAGoogle(payload);
+                setInInvio(false);
+                if(tipoAzione === "PIENO") { setLitri(''); setEuro(''); setKmAlPieno(''); }
+            };
+
+            const elencoAutisti = ["Aracu F.", "Baldussu P.", "Carta S.", "Corona A.", "Demurtas R.", "Deplano D.", "Dessi F.", "Ferrigno M.", "Fois G.", "Lamanna N.", "Lecis F.", "Crastus A.", "Licheri G.", "Lorrai F.", "Mannu W.", "Melis R.", "Meloni N.", "Mereu R.", "Mulana D.", "Murru G.", "Pinna G.", "Pinna I.", "Porcu A.", "Rachel S.", "Sarritzu A.", "Scalas R.", "Serra P.", "Setzu E.", "Toro A.", "Toro S.", "Zara J.", "Vargiu M.", "Sollai R.", "Impera A.", "Ledda E.", "Pili S.", "Soddu M."].sort();
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen flex flex-col pb-28">
+                    <header className="bg-slate-900 p-5 rounded-b-[2.5rem] shadow-xl sticky top-0 z-50">
+                        <div className="flex justify-between items-center mb-4">
+                            <h1 className="text-white font-black italic text-lg tracking-tighter uppercase">TruckManager <span className="text-pink-500">v2.5</span></h1>
+                        </div>
+                        <div className="flex gap-2">
+                            <select className="flex-1 bg-slate-800 text-white p-3 rounded-xl text-[10px] font-bold outline-none" value={autista} onChange={(e)=>setAutista(e.target.value)}>
+                                <option value="">👤 SELEZIONA AUTISTA</option>
+                                {elencoAutisti.map(a => <option key={a} value={a}>{a}</option>)}
+                            </select>
+                            <input className="w-1/3 bg-slate-800 text-white p-3 rounded-xl text-[10px] font-bold uppercase text-center outline-none" placeholder="🚛 TARGA" value={targa} onChange={(e)=>setTarga(e.target.value.toUpperCase())} />
+                        </div>
+                    </header>
+
+                    <main className="p-4 space-y-4 flex-1">
+                        {tab === 'viaggio' && (
+                            <div className="space-y-4">
+                                <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200">
+                                    <h3 className="text-[10px] font-black text-blue-600 uppercase mb-4">Gestione Chilometri</h3>
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <input type="number" placeholder="KM Inizio" className="p-4 bg-slate-50 rounded-2xl font-bold text-center outline-none w-full" value={kmInizio} onChange={(e)=>setKmInizio(e.target.value)} />
+                                        <input type="number" placeholder="KM Fine" className="p-4 bg-slate-50 rounded-2xl font-bold text-center outline-none w-full" value={kmFine} onChange={(e)=>setKmFine(e.target.value)} />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={()=>handleAction("VIAGGIO", "INIZIO")} className="flex-1 bg-emerald-500 text-white p-3 rounded-xl font-black text-[9px] uppercase">Inizio</button>
+                                        <button onClick={()=>handleAction("VIAGGIO", "FINE")} className="flex-1 bg-red-500 text-white p-3 rounded-xl font-black text-[9px] uppercase">Fine</button>
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200">
+                                    <h3 className="text-[10px] font-black text-purple-600 uppercase mb-4">Nuova Distinta</h3>
+                                    <div className="flex gap-2">
+                                        <input type="text" placeholder="N° Distinta" className="flex-1 p-4 bg-slate-50 rounded-2xl font-bold outline-none" value={nDistinta} onChange={(e)=>setNDistinta(e.target.value)} />
+                                        <button onClick={() => {
+                                            if(!nDistinta) return;
+                                            setListaDistinte([{n: nDistinta, ora: new Date().toLocaleTimeString()}, ...listaDistinte]);
+                                            setNDistinta('');
+                                        }} className="bg-purple-600 text-white px-6 rounded-2xl shadow-lg">+</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {tab === 'manutenzione' && (
+                            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 space-y-6">
+                                <h3 className="text-[10px] font-black uppercase text-blue-900 mb-2 tracking-widest">Stato Mezzo</h3>
+                                {['olio', 'freni', 'idroguida', 'liquidoRaffreddamento', 'gomme'].map((id) => (
+                                    <div key={id} className="space-y-1">
+                                        <div className="flex justify-between text-[10px] font-bold uppercase">
+                                            <span>{id.replace(/([A-Z])/g, ' $1')}</span>
+                                            <span>{checklist[id]}%</span>
+                                        </div>
+                                        <input type="range" value={checklist[id]} onChange={(e) => setChecklist({...checklist, [id]: e.target.value})} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer" />
+                                    </div>
+                                ))}
+                                <button onClick={() => handleAction("CHECK")} className="w-full bg-slate-900 text-white p-4 rounded-xl font-black uppercase text-[10px]">Invia Report Stato</button>
+                            </div>
+                        )}
+
+                        {tab === 'ferie' && (
+                            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200">
+                                <h3 className="text-[10px] font-black uppercase text-indigo-600 mb-4 tracking-widest">Richiesta Assenza</h3>
+                                <select className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-sm mb-4 outline-none" value={tipoFerie} onChange={(e) => setTipoFerie(e.target.value)}>
+                                    <option value="Ferie">🏝️ Ferie</option>
+                                    <option value="Permesso">⏰ Permesso</option>
+                                    <option value="Malattia">🤒 Malattia</option>
+                                    <option value="Turnover">♻️ Turnover</option>
+                                    <option value="Assenza"> Assenza</option>
+                                    <option value="Legge 104">♿ Legge 104</option>
+                                </select>
+                                <div className="p-4 bg-indigo-50 rounded-2xl flex items-center justify-between">
+                                    <span className="font-black text-indigo-900">{dataSelezionata.toLocaleDateString('it-IT')}</span>
+                                    <button onClick={() => handleAction("FERIE")} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black uppercase text-[10px]">Invia</button>
+                                </div>
+                            </div>
+                        )}
+                       
+                        {tab === 'pieno' && (
+                            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-200 space-y-4">
+                                <h3 className="text-[10px] font-black uppercase text-emerald-600 mb-2">Rifornimento</h3>
+                                <input type="number" placeholder="Litri" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={litri} onChange={(e)=>setLitri(e.target.value)} />
+                                <input type="number" placeholder="Euro" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={euro} onChange={(e)=>setEuro(e.target.value)} />
+                                <input type="number" placeholder="KM Attuali" className="w-full p-4 bg-slate-50 rounded-2xl font-bold" value={kmAlPieno} onChange={(e)=>setKmAlPieno(e.target.value)} />
+                                <button onClick={() => handleAction("PIENO")} className="w-full bg-emerald-600 text-white p-4 rounded-xl font-black uppercase text-[10px]">Invia Pieno</button>
+                            </div>
+                        )}
+                    </main>
+
+                    <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white border-t flex items-center justify-around px-2 shadow-2xl rounded-t-3xl">
+                        {['viaggio', 'manutenzione', 'ferie', 'pieno'].map((t) => (
+                            <button key={t} onClick={() => setTab(t)} className={`flex flex-col items-center flex-1 ${tab === t ? 'text-slate-900' : 'text-slate-400'}`}>
+                                <span className="text-[10px] font-black uppercase">{t}</span>
+                            </button>
+                        ))}
+                    </nav>
+
+                    {inInvio && (
+                        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center">
+                            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl">
+                                <p className="font-black text-[10px] uppercase animate-pulse">Invio dati...</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
